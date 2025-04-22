@@ -32,6 +32,13 @@
   </li>
   <li><strong>Ответы API:</strong> Не использовать <code>ResponseEntity</code> напрямую.</li>
   <li><strong>Маппинг:</strong> Использовать <code>MapStruct</code> для преобразования Entity в DTO.</li>
+  <li><strong>Мониторинг:</strong> 
+    <ul>
+      <li>Подключить <code>Spring Boot Actuator</code>.</li>
+      <li>Открыть доступ к эндпоинтам `/actuator/health`, `/actuator/metrics`, `/actuator/info`.</li>
+      <li>Создать минимум одну <strong>кастомную метрику</strong> с использованием <code>Micrometer</code> (например, количество выполненных задач).</li>
+    </ul>
+  </li>
 </ul>
 
 <hr>
@@ -88,6 +95,10 @@
     </tr>
     <tr>
       <td>Swagger / OpenAPI</td>
+      <td>Latest</td>
+    </tr>
+    <tr>
+      <td>Spring Actuator</td>
       <td>Latest</td>
     </tr>
   </tbody>
