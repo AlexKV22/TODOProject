@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: TODOProject
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${TODO_PROJECT_DEV_URL_DB:jdbc:postgresql://localhost:5432/aleksandrkakovkin}
+    username: ${TODO_PROJECT_DEV_USERNAME_DB:postgres}
+    password: ${TODO_PROJECT_DEV_PASSWORD_DB:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        default_schema: todo_project
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: todo_project
+
+server:
+  port: 8080
