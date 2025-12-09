@@ -2,8 +2,9 @@ package org.todo.todoproject.service;
 
 import org.todo.todoproject.dto.request.TaskChangeStatusRequest;
 import org.todo.todoproject.dto.request.TaskRequest;
-import org.todo.todoproject.dto.response.PageResponse;
 import org.todo.todoproject.dto.response.TaskResponse;
+
+import java.util.List;
 
 public interface TaskService {
     TaskResponse createTask(TaskRequest taskRequest);
@@ -11,5 +12,5 @@ public interface TaskService {
     boolean deleteTask(Long id);
     TaskResponse changeStatus(TaskChangeStatusRequest taskChangeStatusRequest, Long id);
     TaskResponse getTask(Long id);
-    PageResponse getTasks(int page, int size);
+    List<TaskResponse> getTasks(int page, int size);
 }

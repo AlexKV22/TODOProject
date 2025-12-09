@@ -12,6 +12,7 @@ public interface TaskMapper {
     @Mapping(target = "title", source = "title")
     @Mapping(target = "expireAt", source = "expireAt")
     @Mapping(target = "status", source = "status")
+    @Mapping(target = "createAt", source = "createAt")
     TaskResponse entityToDto(Task task);
 
 

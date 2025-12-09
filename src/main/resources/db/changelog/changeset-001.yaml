@@ -6,20 +6,3 @@ databaseChangeLog:
         - sqlFile:
             path: db/sql/changeset-001.sql
             relativeToChangeFile: true
-
-
-#  - changeSet:
-#      id: 2
-#      author: Alexandr
-#      changes:
-#        - sqlFile:
-#            path: db/migration/sql/changeset-002.sql
-#            relativeToChangeFile: true
-#
-#  - changeSet:
-#      id: 3
-#      author: Alexandr
-#      changes:
-#        - sqlFile:
-#            path: db/migration/sql/changeset-003.sql
-#            relativeToChangeFile: true

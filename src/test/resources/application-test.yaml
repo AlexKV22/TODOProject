@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: TODOProject
+
+  sql:
+    init:
+      mode: always
+
+  liquibase:
+    enabled: false

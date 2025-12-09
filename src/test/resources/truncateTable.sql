@@ -1,0 +1,1 @@
+TRUNCATE TABLE todo_project.tasks RESTART IDENTITY;
