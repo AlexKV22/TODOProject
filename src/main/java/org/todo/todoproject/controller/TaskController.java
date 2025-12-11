@@ -6,8 +6,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.todo.todoproject.dto.request.TaskChangeStatusRequest;
 import org.todo.todoproject.dto.request.TaskRequest;
@@ -24,9 +25,6 @@ import org.todo.todoproject.dto.response.TaskResponse;
 import org.todo.todoproject.service.TaskService;
 import org.todo.todoproject.swagger.SwTaskController;
 import org.todo.todoproject.util.TaskStatus;
-
-import java.net.URI;
-import java.util.List;
 
 
 @RestController
@@ -47,41 +45,42 @@ public class TaskController implements SwTaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> getAllTasks(@RequestParam(defaultValue = "10") @Positive Integer limit,
-                                                          @RequestParam(defaultValue = "0") @PositiveOrZero Integer offset) {
-        List<TaskResponse> tasks = taskService.getTasks(limit, offset);
-        return ResponseEntity.ok(tasks);
+    @ResponseStatus(HttpStatus.OK)
+    public Page<TaskResponse> getAllTasks(@RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
+                                                          @RequestParam(defaultValue = "10") @Positive Integer size) {
+        return taskService.getTasks(page, size);
     }
 
     @GetMapping("/task/{id}")
-    public ResponseEntity<TaskResponse> getTaskById(@PathVariable @Positive Long id) {
-        TaskResponse task = taskService.getTask(id);
-        return task != null ? ResponseEntity.ok(task) : ResponseEntity.notFound().build();
+    @ResponseStatus(HttpStatus.OK)
+    public TaskResponse getTaskById(@PathVariable @Positive Long id) {
+        return taskService.getTask(id);
     }
 
     @PostMapping
-    public ResponseEntity<TaskResponse> createTask(@RequestBody @Valid TaskRequest taskRequest) {
-        TaskResponse task = taskService.createTask(taskRequest);
-        return ResponseEntity.created(URI.create("/" + task.id())).body(task);
+    @ResponseStatus(HttpStatus.CREATED)
+    public TaskResponse createTask(@RequestBody @Valid TaskRequest taskRequest) {
+        return taskService.createTask(taskRequest);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskResponse> updateTask(@RequestBody @Valid TaskRequest taskRequest, @PathVariable @Positive Long id) {
-        TaskResponse taskResponse = taskService.updateTask(taskRequest, id);
-        return taskResponse != null ? ResponseEntity.ok(taskResponse) : ResponseEntity.notFound().build();
+    @ResponseStatus(HttpStatus.OK)
+    public TaskResponse updateTask(@RequestBody @Valid TaskRequest taskRequest, @PathVariable @Positive Long id) {
+        return taskService.updateTask(taskRequest, id);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable @Positive Long id) {
-        return taskService.deleteTask(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTask(@PathVariable @Positive Long id) {
+        taskService.deleteTask(id);
     }
 
     @PutMapping(("/status/{id}"))
-    public ResponseEntity<TaskResponse> changeStatusTask(@RequestBody @Valid TaskChangeStatusRequest taskChangeStatusRequest, @PathVariable @Positive Long id) {
+    @ResponseStatus(HttpStatus.OK)
+    public TaskResponse changeStatusTask(@RequestBody @Valid TaskChangeStatusRequest taskChangeStatusRequest, @PathVariable @Positive Long id) {
         if (taskChangeStatusRequest.status() == TaskStatus.COMPLETED) {
             taskCounter.increment();
         }
-        TaskResponse taskResponse = taskService.changeStatus(taskChangeStatusRequest, id);
-        return taskResponse != null ? ResponseEntity.ok(taskResponse) : ResponseEntity.notFound().build();
+        return taskService.changeStatus(taskChangeStatusRequest, id);
     }
 }

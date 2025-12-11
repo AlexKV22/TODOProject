@@ -2,12 +2,12 @@ package org.todo.todoproject.repository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 import org.todo.todoproject.dto.request.TaskChangeStatusRequest;
 import org.todo.todoproject.entity.Task;
 import org.todo.todoproject.util.TaskStatus;
@@ -21,6 +21,7 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Repository
 @Slf4j
@@ -54,14 +55,17 @@ public class TaskRepositoryImpl implements TaskRepository {
     }
 
     @Override
-    public List<Task> findAll(int limit, int offset) {
+    public Page<Task> findAll(Pageable pageable) {
         String sql = "SELECT * FROM todo_project.tasks ORDER BY created_at DESC LIMIT ? OFFSET ?";
-        return jdbcTemplate.query(con -> {
+        List<Task> result = jdbcTemplate.query(con -> {
             PreparedStatement statement = con.prepareStatement(sql);
-            statement.setInt(1, limit);
-            statement.setInt(2, offset);
+            statement.setInt(1, pageable.getPageSize());
+            statement.setLong(2, pageable.getOffset());
             return statement;
         }, (rs, rowNum) -> mapRow(rs));
+        String sqlForSize = "SELECT COUNT(*) FROM todo_project.tasks";
+        Long count = jdbcTemplate.queryForObject(sqlForSize, Long.class);
+        return new PageImpl<>(result, pageable, count);
     }
 
     @Override

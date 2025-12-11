@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -25,7 +28,6 @@ import org.todo.todoproject.util.TaskStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 @Import(TaskRepositoryImpl.class)
@@ -87,17 +89,19 @@ class TaskRepositoryTests {
     @Sql(executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD, value = "/truncateTable.sql")
     @DisplayName(value = "Валидные тесты получения всех задач")
     void findAllTasksTest() {
-        List<Task> all = taskRepositoryImpl.findAll(5, 0);
-        Assertions.assertEquals(1, all.size());
-        Assertions.assertEquals("Task", all.get(0).getTitle());
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Task> result = taskRepositoryImpl.findAll(pageable);
+        Assertions.assertEquals(1, result.getTotalElements());
+        Assertions.assertEquals("Task", result.getContent().get(0).getTitle());
     }
 
     @Test
     @Sql(executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD, value = "/truncateTable.sql")
     @DisplayName(value = "Валидные тесты получения всех задач")
     void findEmptyListTasksTest() {
-        List<Task> all = taskRepositoryImpl.findAll(5, 0);
-        Assertions.assertTrue(all.isEmpty());
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Task> result = taskRepositoryImpl.findAll(pageable);
+        Assertions.assertEquals(0, result.getTotalElements());
     }
 
     @Test

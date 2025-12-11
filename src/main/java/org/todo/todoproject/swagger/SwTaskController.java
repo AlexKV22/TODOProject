@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,11 +56,25 @@ public interface SwTaskController {
                                     }
 
                             )),
+                    @ApiResponse(
+                            description = "Список задач пуст",
+                            responseCode = "200",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    examples = {
+                                            @ExampleObject(
+                                                    value = """
+                                                            []
+                                                            """
+                                            )
+                                    }
+
+                            )),
 
             }
     )
-    ResponseEntity<List<TaskResponse>> getAllTasks(@RequestParam(defaultValue = "10") @Positive Integer limit,
-                                                   @RequestParam(defaultValue = "0") @PositiveOrZero Integer offset);
+    Page<TaskResponse> getAllTasks(@RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
+                                   @RequestParam(defaultValue = "10") @Positive Integer size);
 
 
     @Operation(
@@ -93,7 +108,7 @@ public interface SwTaskController {
                             )
             }
     )
-    ResponseEntity<TaskResponse> getTaskById(@PathVariable @Positive Long id);
+    TaskResponse getTaskById(@PathVariable @Positive Long id);
 
 
     @Operation(
@@ -123,7 +138,7 @@ public interface SwTaskController {
                             )),
             }
     )
-    ResponseEntity<TaskResponse> createTask(@RequestBody @Valid TaskRequest taskRequest);
+    TaskResponse createTask(@RequestBody @Valid TaskRequest taskRequest);
 
     @Operation(
             summary = "Обновление задачи",
@@ -156,7 +171,7 @@ public interface SwTaskController {
                             )
             }
     )
-    ResponseEntity<TaskResponse> updateTask(@RequestBody @Valid TaskRequest taskRequest, @PathVariable @Positive Long id);
+    TaskResponse updateTask(@RequestBody @Valid TaskRequest taskRequest, @PathVariable @Positive Long id);
 
 
     @Operation(
@@ -174,7 +189,7 @@ public interface SwTaskController {
                             )
             }
     )
-    ResponseEntity<Void> deleteTask(@PathVariable @Positive Long id);
+    void deleteTask(@PathVariable @Positive Long id);
 
 
     @Operation(
@@ -208,5 +223,5 @@ public interface SwTaskController {
                     )
             }
     )
-    ResponseEntity<TaskResponse> changeStatusTask(@RequestBody @Valid TaskChangeStatusRequest taskChangeStatusRequest, @PathVariable @Positive Long id);
+    TaskResponse changeStatusTask(@RequestBody @Valid TaskChangeStatusRequest taskChangeStatusRequest, @PathVariable @Positive Long id);
 }

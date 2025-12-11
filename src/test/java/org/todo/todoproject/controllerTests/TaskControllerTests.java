@@ -1,6 +1,8 @@
 package org.todo.todoproject.controllerTests;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,6 +13,10 @@ import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -18,6 +24,7 @@ import org.todo.todoproject.controller.TaskController;
 import org.todo.todoproject.dto.request.TaskChangeStatusRequest;
 import org.todo.todoproject.dto.request.TaskRequest;
 import org.todo.todoproject.dto.response.TaskResponse;
+import org.todo.todoproject.exception.NotExistTaskByIDException;
 import org.todo.todoproject.service.TaskServiceImpl;
 import org.todo.todoproject.util.TaskStatus;
 
@@ -43,6 +50,12 @@ class TaskControllerTests {
     private ObjectMapper objectMapper;
 
     @MockBean
+    private Counter taskCounter;
+
+    @MockBean
+    private MeterRegistry meterRegistry;
+
+    @MockBean
     private TaskServiceImpl taskService;
 
     static Stream<Arguments> getAllTasksInvalidScenarios() {
@@ -56,8 +69,8 @@ class TaskControllerTests {
     @ParameterizedTest
     @MethodSource("getAllTasksInvalidScenarios")
     @DisplayName(value = "Невалидные тесты получения всех задач")
-    void getAllTasksInvalidTest(String limit, String offset, int expectedStatus) throws Exception {
-        mockMvc.perform(get("/").param("limit", limit).param("offset", offset)).andExpect(status().is(expectedStatus));
+    void getAllTasksInvalidTest(String page, String size, int expectedStatus) throws Exception {
+        mockMvc.perform(get("/").param("page", page).param("size", size)).andExpect(status().is(expectedStatus));
         Mockito.verify(taskService, Mockito.never()).getTasks(anyInt(), anyInt());
     }
 
@@ -65,13 +78,14 @@ class TaskControllerTests {
     @DisplayName(value = "Тест отсутствия в базе всех задач")
     void getAllTasksWhenNotExistTasksTest() throws Exception {
         List<TaskResponse> taskResponses = Collections.emptyList();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaskResponse> page = new PageImpl<>(taskResponses, pageable, 0);
 
-        Mockito.when(taskService.getTasks(5, 0)).thenReturn(taskResponses);
-        mockMvc.perform(get("/").param("limit", "5").param("offset", "0"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+        Mockito.when(taskService.getTasks(0, 10)).thenReturn(page);
+        mockMvc.perform(get("/").param("page", "0").param("size", "10"))
+                .andExpect(status().isOk());
 
-        Mockito.verify(taskService, Mockito.times(1)).getTasks(5, 0);
+        Mockito.verify(taskService, Mockito.times(1)).getTasks(0, 10);
     }
 
     @Test
@@ -80,37 +94,60 @@ class TaskControllerTests {
         TaskResponse taskResponseOne = new TaskResponse(1L, "Create task", Instant.parse("2025-12-07T14:14:45.622332Z"), LocalDate.parse("2025-12-07"), TaskStatus.CREATED);
         TaskResponse taskResponseTwo = new TaskResponse(2L, "Enouth task", Instant.parse("2025-12-07T10:06:26.086596Z"), null, TaskStatus.CREATED);
         List<TaskResponse> taskResponses = List.of(taskResponseOne, taskResponseTwo);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaskResponse> page = new PageImpl<>(taskResponses, pageable, 2);
 
-        Mockito.when(taskService.getTasks(5, 0)).thenReturn(taskResponses);
+        Mockito.when(taskService.getTasks(0, 10)).thenReturn(page);
 
-        ResultActions resultActions = mockMvc.perform(get("/").param("limit", "5").param("offset", "0"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("[0].id").value(1))
-                .andExpect(jsonPath("[0].title").value("Create task"))
-                .andExpect(jsonPath("[1].id").value(2))
-                .andExpect(jsonPath("[1].title").value("Enouth task"));
+        ResultActions resultActions = mockMvc.perform(get("/").param("page", "0").param("size", "10"))
+                .andExpect(status().isOk());
 
         String response = """
-          [
-               {
-                   "id": 1,
-                   "title": "Create task",
-                   "createAt": "2025-12-07T14:14:45.622332Z",
-                   "expireAt": "2025-12-07",
-                   "status": "CREATED"
-               },
-               {
-                   "id": 2,
-                   "title": "Enouth task",
-                   "createAt": "2025-12-07T10:06:26.086596Z",
-                   "expireAt": null,
-                   "status": "CREATED"
-               }
-           ]
-        """;
+    {
+        "content": [
+            {
+                "id": 2,
+                "title": "Enouth task",
+                "createAt": "2025-12-07T10:06:26.086596Z",
+                "expireAt": null,
+                "status": "CREATED"
+            },
+            {
+                "id": 1,
+                "title": "Create task",
+                "createAt": "2025-12-07T14:14:45.622332Z",
+                "expireAt": "2025-12-07",
+                "status": "CREATED"
+            }
+        ],
+        "pageable": {
+            "pageNumber": 0,
+            "pageSize": 10,
+            "sort": {
+                "empty": true,
+                "sorted": false,
+                "unsorted": true
+            },
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+        },
+        "last": true,
+        "totalElements": 2,
+        "totalPages": 1,
+        "first": true,
+        "size": 10,
+        "number": 0,
+        "sort": {
+            "empty": true,
+            "sorted": false,
+            "unsorted": true
+        },
+        "numberOfElements": 2,
+        "empty": false
+    }""";
         resultActions.andExpect(result -> JSONAssert.assertEquals(response, result.getResponse().getContentAsString(), false));
-        Mockito.verify(taskService, Mockito.times(1)).getTasks(5, 0);
+        Mockito.verify(taskService, Mockito.times(1)).getTasks(0, 10);
     }
 
 
@@ -159,9 +196,10 @@ class TaskControllerTests {
     @Test
     @DisplayName(value = "Тесты отсутствия задачи по айди")
     void getTaskByIdWithNotExistTest() throws Exception {
-        Mockito.when(taskService.getTask(4L)).thenReturn(null);
-        mockMvc.perform(get("/task/{id}", "4")).andExpect(status().isNotFound());
-        Mockito.verify(taskService, Mockito.times(1)).getTask(4L);
+        Mockito.doThrow(NotExistTaskByIDException.class).when(taskService).getTask(1L);
+
+        mockMvc.perform(get("/task/{id}", "1")).andExpect(status().isNotFound());
+        Mockito.verify(taskService, Mockito.times(1)).getTask(1L);
     }
 
     static Stream<Arguments> createTaskInvalidScenarios() {
@@ -228,7 +266,7 @@ class TaskControllerTests {
 
     static Stream<Arguments> updateTaskValidScenarios() {
         return Stream.of(
-                Arguments.of("{\"title\":\"task1\", \"expireAt\":\"2025-12-08\"}", "1", 200),
+                Arguments.of("{\"title\":\"task1\", \"expireAt\":\"2025-12-11\"}", "1", 200),
                 Arguments.of("{\"title\":\"task1\", \"expireAt\":\"\"}", "1", 200)
         );
     }
@@ -264,7 +302,7 @@ class TaskControllerTests {
     @DisplayName(value = "Тесты отсутствия задачи для обновления")
     void updateTaskWithNotExistTest() throws Exception {
         TaskRequest taskRequest = new TaskRequest("Modify task", LocalDate.now());
-        Mockito.when(taskService.updateTask(any(TaskRequest.class), any(Long.class))).thenReturn(null);
+        Mockito.doThrow(NotExistTaskByIDException.class).when(taskService).updateTask(Mockito.any(TaskRequest.class), Mockito.any(Long.class));
         mockMvc.perform(put("/{id}", "4").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(taskRequest)))
                 .andExpect(status().isNotFound());
 
@@ -300,7 +338,7 @@ class TaskControllerTests {
     @Test
     @DisplayName(value = "Тесты отсутствия задачи для удаления")
     void deleteTaskWithNotExistTest() throws Exception {
-        Mockito.when(taskService.deleteTask(any(Long.class))).thenReturn(false);
+        Mockito.doThrow(NotExistTaskByIDException.class).when(taskService).deleteTask(any(Long.class));
 
         mockMvc.perform(delete("/{id}", "4")).andExpect(status().isNotFound());
 
@@ -354,11 +392,11 @@ class TaskControllerTests {
     }
 
     @Test
-    @DisplayName(value = "Тесты  отсутствия задачи для изменения статуса")
+    @DisplayName(value = "Тесты отсутствия задачи для изменения статуса")
     void changeStatusTaskWithNotExistTest() throws Exception {
         TaskChangeStatusRequest taskChangeStatusRequest = new TaskChangeStatusRequest(TaskStatus.EXPIRED);
 
-        Mockito.when(taskService.changeStatus(any(TaskChangeStatusRequest.class), any(Long.class))).thenReturn(null);
+        Mockito.doThrow(NotExistTaskByIDException.class).when(taskService).changeStatus(any(TaskChangeStatusRequest.class), any(Long.class));
 
         mockMvc.perform(put("/status/{id}", "4").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(taskChangeStatusRequest)))
                 .andExpect(status().isNotFound());

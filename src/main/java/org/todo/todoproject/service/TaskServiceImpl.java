@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.todo.todoproject.dto.request.TaskChangeStatusRequest;
@@ -12,6 +15,7 @@ import org.todo.todoproject.dto.request.TaskRequest;
 import org.todo.todoproject.dto.response.TaskResponse;
 import org.todo.todoproject.dto.util.TaskServiceDto;
 import org.todo.todoproject.entity.Task;
+import org.todo.todoproject.exception.NotExistTaskByIDException;
 import org.todo.todoproject.exception.NotIDWhenSaveTaskException;
 import org.todo.todoproject.repository.TaskRepository;
 import org.todo.todoproject.util.TaskStatus;
@@ -64,7 +68,7 @@ public class TaskServiceImpl implements TaskService {
             createLog(TaskStatus.UPDATED, result.getId());
             return taskServiceDto.entityToDto(result);
         }
-        return null;
+        throw new NotExistTaskByIDException(id);
     }
 
     @Override
@@ -79,7 +83,7 @@ public class TaskServiceImpl implements TaskService {
             createLog(TaskStatus.DELETED, id);
             return true;
         }
-        return false;
+        throw new NotExistTaskByIDException(id);
     }
 
     @Override
@@ -95,30 +99,33 @@ public class TaskServiceImpl implements TaskService {
             createLog(TaskStatus.UPDATED, result.getId());
             return taskServiceDto.entityToDto(result);
         }
-        return null;
+        throw new NotExistTaskByIDException(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "task", key = "#id")
     public TaskResponse getTask(Long id) {
-        return findTaskById(id).map(taskServiceDto::entityToDto).orElse(null);
+        return taskServiceDto.entityToDto(findTaskById(id));
     }
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "allTasks")
-    public List<TaskResponse> getTasks(int limit, int offset) {
-        return taskRepository.findAll(limit, offset).stream().map(taskServiceDto::entityToDto).toList();
+    public Page<TaskResponse> getTasks(Integer page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Task> allTasks = taskRepository.findAll(pageable);
+        return allTasks.map(taskServiceDto::entityToDto);
     }
 
-    private Optional<Task> findTaskById(Long id) {
+    private Task findTaskById(Long id) {
         log.info("Проверка наличия задачи в базе данных с id: {}", id );
         Optional<Task> taskById = taskRepository.findById(id);
         if (taskById.isEmpty()) {
             log.info("Отсутствие в базе задачи с id: {}", id );
+            throw new NotExistTaskByIDException(id);
         }
-        return taskById;
+        return taskById.get();
     }
 
     private void createLog(TaskStatus status, Long id) {
