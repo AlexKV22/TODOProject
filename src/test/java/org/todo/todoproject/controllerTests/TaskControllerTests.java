@@ -266,7 +266,7 @@ class TaskControllerTests {
 
     static Stream<Arguments> updateTaskValidScenarios() {
         return Stream.of(
-                Arguments.of("{\"title\":\"task1\", \"expireAt\":\"2025-12-11\"}", "1", 200),
+                Arguments.of("{\"title\":\"task1\", \"expireAt\":\"2025-12-20\"}", "1", 200),
                 Arguments.of("{\"title\":\"task1\", \"expireAt\":\"\"}", "1", 200)
         );
     }
